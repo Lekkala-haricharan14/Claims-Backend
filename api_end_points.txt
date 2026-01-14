@@ -1,0 +1,106 @@
+BASE URL:
+http://localhost:5000
+
+
+// ==================================================
+// SERVICE HEALTH CHECK
+// ==================================================
+
+// Check if Claims Service is running
+GET /
+
+
+// ==================================================
+// CLAIM APIs
+// ==================================================
+
+// --------------------------------------------------
+// Create a new Claim (Policyholder)
+// --------------------------------------------------
+POST /api/claims
+
+Sample JSON Body:
+{
+  "claimId": 1001,
+  "policyId": 501,
+  "policyholderId": 301,
+  "agentId": 201,
+  "claimReason": "Hospitalization",
+  "claimType": "Medical",
+  "incidentDate": "2025-01-10",
+  "claimAmtRequested": 60000
+}
+
+
+// --------------------------------------------------
+// Read Claims (Policyholder / Agent / ClaimOfficer)
+// Filters supported via query params:
+// claimId, agentId, policyholderId, claimOfficerId, claimStatus
+// --------------------------------------------------
+GET /api/claims
+
+Examples:
+GET /api/claims?claimId=1001
+GET /api/claims?policyholderId=301
+GET /api/claims?policyholderId=301&claimStatus=Pending
+GET /api/claims?agentId=201
+GET /api/claims?claimOfficerId=401&claimStatus=Approved
+
+
+// ==================================================
+// CLAIM STATUS UPDATE (ONLY CLAIM OFFICER)
+// ==================================================
+
+// Update claim status and related fields
+PUT /api/claims/{claimId}/status
+
+Sample JSON Body:
+{
+  "claimStatus": "Approved",
+  "statusReason": "Documents verified",
+  "approvedAmt": 45000,
+  "claimOfficerId": 401
+}
+
+// Note:
+// - approvedAmt is updated ONLY when status = Approved
+// - statusUpdatedDate is auto-generated
+// - Agents cannot access this API
+
+
+// ==================================================
+// SUPPORTING DOCUMENTS UPDATE (POLICYHOLDER)
+// ==================================================
+
+// Upload / update supporting documents
+PUT /api/claims/{claimId}/documents
+
+Sample JSON Body:
+{
+  "documents": [
+    "uploads/bill1.pdf",
+    "uploads/report.jpg"
+  ]
+}
+
+// Note:
+// - Documents are appended
+// - Existing documents are preserved
+
+
+// ==================================================
+// CLAIM OFFICER APIs
+// ==================================================
+
+// --------------------------------------------------
+// Create Claim Officer (Admin / Setup)
+// --------------------------------------------------
+POST /api/claimofficers
+
+Sample JSON Body:
+{
+  "claimOfficerId": 401,
+  "claimOfficerName": "Ravi Kumar",
+  "email": "ravi@insurance.com",
+  "phone": "9876543210"
+}
