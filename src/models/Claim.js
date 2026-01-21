@@ -3,13 +3,13 @@ const mongoose = require("mongoose");
 const claimSchema = new mongoose.Schema({
   claimId: { type: Number, unique: true, required: true },
 
-  policyId: Number,
-  policyholderId: Number,
-  agentId: Number,
-  claimOfficerId: Number,
+  // References to other microservices
+  policyId: { type: Number, required: true },
+  policyholderId: { type: Number, required: true },  // From Customers MS
+  agentAssignmentId: Number,
 
-  claimReason: String,
-  claimType: String,
+  claimReason: { type: String, required: true },
+  claimType: { type: String, required: true },
 
   claimStatus: {
     type: String,
@@ -17,7 +17,7 @@ const claimSchema = new mongoose.Schema({
     default: "Pending"
   },
 
-  incidentDate: Date,
+  incidentDate: { type: Date, required: true },
   claimDate: { type: Date, default: Date.now },
 
   claimAmtRequested: { type: Number, required: true },
@@ -26,7 +26,13 @@ const claimSchema = new mongoose.Schema({
   statusReason: String,
   statusUpdatedDate: Date,
 
-  supportingDocuments: [String]
+  supportingDocuments: [String],
+  
+  // Claim Officer assignment
+  claimOfficerId: Number,
+  
+  // Agent reference from Agents MS
+  agentId: Number
 }, { timestamps: true });
 
 module.exports = mongoose.model("Claim", claimSchema);

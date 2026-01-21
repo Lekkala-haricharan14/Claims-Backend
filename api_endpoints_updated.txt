@@ -1,0 +1,264 @@
+BASE URL:
+http://localhost:5000
+
+AUTHENTICATION (Temporary - No JWT yet):
+- Pass user info via headers:
+  - X-User-Role: "customer" | "agent" | "claimOfficer"
+  - X-User-Id: <numeric user id>
+
+Example:
+GET /api/claims
+Headers: {
+  "X-User-Role": "customer",
+  "X-User-Id": "301"
+}
+
+
+// ==================================================
+// SERVICE HEALTH CHECK
+// ==================================================
+
+GET /
+- Check if Claims Service is running
+- No authentication required
+
+
+// ==================================================
+// CUSTOMER MANAGEMENT (ADMIN)
+// ==================================================
+
+POST /api/customers
+- Create a new customer
+- Body: {
+    "policyholderId": 301,
+    "policyholderName": "John Doe",
+    "email": "john@example.com",
+    "phone": "9876543210",
+    "policyNumber": "POL-123",
+    "address": "123 Main St"
+  }
+
+GET /api/customers
+- Get all customers
+- Admin only
+
+GET /api/customers/:customerId
+- Get customer by ID
+- Admin only
+
+
+// ==================================================
+// AGENT MANAGEMENT (ADMIN)
+// ==================================================
+
+POST /api/agents
+- Create a new agent
+- Body: {
+    "agentId": 201,
+    "agentName": "Jane Smith",
+    "email": "jane@example.com",
+    "phone": "9876543211",
+    "agencyCode": "AG-001"
+  }
+
+GET /api/agents
+- Get all agents
+- Admin only
+
+GET /api/agents/:agentId
+- Get agent by ID
+- Admin only
+
+
+// ==================================================
+// CLAIM OFFICER MANAGEMENT (ADMIN)
+// ==================================================
+
+POST /api/claimofficers
+- Create a new claim officer
+- Body: {
+    "claimOfficerId": 401,
+    "claimOfficerName": "Bob Wilson",
+    "email": "bob@example.com",
+    "phone": "9876543212"
+  }
+
+
+// ==================================================
+// CLAIM APIs
+// ==================================================
+
+// --------------------------------------------------
+// CREATE A NEW CLAIM (CUSTOMER ONLY)
+// --------------------------------------------------
+POST /api/claims
+
+Role Required: customer
+Headers: {
+  "X-User-Role": "customer",
+  "X-User-Id": "301"  // Must match policyholderId in body
+}
+
+Sample Body:
+{
+  "claimId": 1001,
+  "policyId": 501,
+  "policyholderId": 301,           // MUST match X-User-Id
+  "agentId": 201,
+  "claimReason": "Hospitalization",
+  "claimType": "Medical",
+  "incidentDate": "2025-01-10",
+  "claimAmtRequested": 60000
+}
+
+Response: 201 Created with claim object
+
+
+// --------------------------------------------------
+// READ CLAIMS (ALL ROLES - Filtered by role)
+// --------------------------------------------------
+GET /api/claims
+
+Roles Supported: customer, agent, claimOfficer
+
+CUSTOMER View:
+Headers: {
+  "X-User-Role": "customer",
+  "X-User-Id": "301"
+}
+- Returns: Only claims where policyholderId = 301
+
+AGENT View:
+Headers: {
+  "X-User-Role": "agent",
+  "X-User-Id": "201"
+}
+- Returns: Only claims where agentId = 201
+
+CLAIM OFFICER View:
+Headers: {
+  "X-User-Role": "claimOfficer",
+  "X-User-Id": "401"
+}
+- Returns: ALL claims (can filter by query params)
+- Supported filters for claim officers:
+  - ?claimId=1001
+  - ?policyholderId=301
+  - ?agentId=201
+  - ?claimOfficerId=401
+  - ?claimStatus=Pending|Approved|Rejected
+  
+Examples:
+GET /api/claims?claimStatus=Pending
+GET /api/claims?policyholderId=301&claimStatus=Approved
+
+
+// --------------------------------------------------
+// UPDATE CLAIM STATUS (CLAIM OFFICER ONLY)
+// --------------------------------------------------
+PUT /api/claims/{claimId}/status
+
+Role Required: claimOfficer
+Headers: {
+  "X-User-Role": "claimOfficer",
+  "X-User-Id": "401"
+}
+
+Sample Body:
+{
+  "claimStatus": "Approved",           // Pending | Approved | Rejected
+  "statusReason": "Documents verified",
+  "approvedAmt": 45000,                // REQUIRED when status = Approved
+  "claimOfficerId": 401                // MUST match X-User-Id
+}
+
+Response: 200 OK with updated claim object
+Error 403: If claimOfficerId doesn't match X-User-Id
+
+
+// --------------------------------------------------
+// UPDATE SUPPORTING DOCUMENTS (CUSTOMER ONLY)
+// --------------------------------------------------
+PUT /api/claims/{claimId}/documents
+
+Role Required: customer
+Headers: {
+  "X-User-Role": "customer",
+  "X-User-Id": "301"  // Must be the claim owner
+}
+
+Sample Body:
+{
+  "documents": [
+    "uploads/bill1.pdf",
+    "uploads/report.jpg"
+  ]
+}
+
+Response: 200 OK with updated claim object
+Error 403: If you're not the claim owner
+Error 400: If claim is already Approved or Rejected
+
+
+// ==================================================
+// ROLE-BASED ACCESS SUMMARY
+// ==================================================
+
+CUSTOMER (Policyholder):
+  - POST /api/claims - Create own claim
+  - GET /api/claims - View only own claims
+  - PUT /api/claims/{claimId}/documents - Upload docs (own claims only, not Approved/Rejected)
+
+AGENT:
+  - GET /api/claims - View only claims assigned to them (read-only)
+  - NO create, update, or delete permissions
+
+CLAIM OFFICER:
+  - GET /api/claims - View ALL claims with advanced filtering
+  - PUT /api/claims/{claimId}/status - Accept/Reject/Pending (with approvedAmt if Approved)
+
+ADMIN (setup only):
+  - Can create customers, agents, claim officers
+  - JWT will protect these endpoints in next iteration
+
+
+// ==================================================
+// RESPONSE EXAMPLES
+// ==================================================
+
+Success Response (Claim Created):
+{
+  "_id": "507f1f77bcf86cd799439011",
+  "claimId": 1001,
+  "policyId": 501,
+  "policyholderId": 301,
+  "agentId": 201,
+  "claimReason": "Hospitalization",
+  "claimType": "Medical",
+  "claimStatus": "Pending",
+  "incidentDate": "2025-01-10T00:00:00.000Z",
+  "claimDate": "2025-01-21T10:30:00.000Z",
+  "claimAmtRequested": 60000,
+  "supportingDocuments": [],
+  "createdAt": "2025-01-21T10:30:00.000Z",
+  "updatedAt": "2025-01-21T10:30:00.000Z"
+}
+
+Error Response (Missing Headers):
+{
+  "error": "Missing credentials",
+  "message": "Please provide X-User-Role and X-User-Id headers"
+}
+
+Error Response (Unauthorized):
+{
+  "error": "Forbidden",
+  "message": "Access denied. Required role(s): claimOfficer",
+  "userRole": "agent"
+}
+
+Error Response (Ownership Violation):
+{
+  "error": "Forbidden",
+  "message": "You can only create claims for yourself"
+}

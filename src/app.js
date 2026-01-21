@@ -13,7 +13,13 @@ app.get("/", (req, res) => {
   res.status(200).json({
     service: "Claims Service",
     status: "Running",
-    version: "1.0.0"
+    version: "1.0.0",
+    note: "Role-based access control implemented. Use headers: X-User-Role and X-User-Id",
+    dependencies: {
+      customers: "Fetched from Customers Microservice",
+      agents: "Fetched from Agents Microservice",
+      claimOfficers: "Stored locally in Claims DB"
+    }
   });
 });
 
